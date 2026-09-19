@@ -1,5 +1,7 @@
 package com.fundoo.notes.controller;
 
+import com.fundoo.notes.dto.LoginDTO;
+import com.fundoo.notes.dto.LoginResponseDTO;
 import com.fundoo.notes.dto.RegistrationDTO;
 import com.fundoo.notes.dto.UserResponseDTO;
 import com.fundoo.notes.service.UserService;
@@ -20,10 +22,17 @@ public class UserController {
 
     private final UserService userService;
 
-    @PostMapping("/register")
+    @PostMapping
     public ResponseEntity<ApiResponse<UserResponseDTO>> register( @Valid @RequestBody RegistrationDTO registrationDTO) {
         UserResponseDTO responseDTO = userService.registerUser(registrationDTO);
         ApiResponse<UserResponseDTO> apiResponse = ApiResponse.success("User registered successfully", responseDTO);
         return ResponseEntity.status(HttpStatus.CREATED).body(apiResponse);
+    }
+    
+    @PostMapping("/login")
+    public ResponseEntity<ApiResponse<LoginResponseDTO>> login(@Valid @RequestBody LoginDTO login){
+    	LoginResponseDTO loginResponse = userService.loginUser(login);
+    	ApiResponse<LoginResponseDTO> apiResponseLogin = ApiResponse.success("Authenticated", loginResponse);
+    	return ResponseEntity.status(HttpStatus.OK).body(apiResponseLogin);
     }
 }
