@@ -55,14 +55,13 @@ class UserControllerTest {
                 1L,
                 "John",
                 "Doe",
-                "john.doe@example.com"
-        );
+                "john.doe@example.com");
 
         when(userService.registerUser(any(RegistrationDTO.class))).thenReturn(userResponseDTO);
 
-        mockMvc.perform(post("/api/users/register")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(Objects.requireNonNull(objectMapper.writeValueAsString(validRegistrationDTO))))
+        mockMvc.perform(post("/api/users")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(Objects.requireNonNull(objectMapper.writeValueAsString(validRegistrationDTO))))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.success").value(true))
                 .andExpect(jsonPath("$.message").value("User registered successfully"))
@@ -79,9 +78,9 @@ class UserControllerTest {
         when(userService.registerUser(any(RegistrationDTO.class)))
                 .thenThrow(new UserAlreadyExistsException("User already exists with email: john.doe@example.com"));
 
-        mockMvc.perform(post("/api/users/register")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(Objects.requireNonNull(objectMapper.writeValueAsString(validRegistrationDTO))))
+        mockMvc.perform(post("/api/users")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(Objects.requireNonNull(objectMapper.writeValueAsString(validRegistrationDTO))))
                 .andExpect(status().isConflict())
                 .andExpect(jsonPath("$.success").value(false))
                 .andExpect(jsonPath("$.message").value("User already exists with email: john.doe@example.com"));
@@ -97,9 +96,9 @@ class UserControllerTest {
         invalidDTO.setEmail("invalid-email");
         invalidDTO.setPassword("123");
 
-        mockMvc.perform(post("/api/users/register")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(Objects.requireNonNull(objectMapper.writeValueAsString(invalidDTO))))
+        mockMvc.perform(post("/api/users")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(Objects.requireNonNull(objectMapper.writeValueAsString(invalidDTO))))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.success").value(false))
                 .andExpect(jsonPath("$.message").value("Validation failed"))
