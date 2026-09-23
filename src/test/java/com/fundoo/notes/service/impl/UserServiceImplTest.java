@@ -9,6 +9,10 @@ import com.fundoo.notes.exception.InvalidCredentialsException;
 import com.fundoo.notes.exception.UserAlreadyExistsException;
 import com.fundoo.notes.repository.UserRepository;
 import com.fundoo.notes.util.JwtUtil;
+import com.fundoo.notes.dto.ForgotPasswordDTO;
+import com.fundoo.notes.dto.ResetPasswordDTO;
+import com.fundoo.notes.exception.UserNotFoundException;
+import com.fundoo.notes.service.EmailService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -34,6 +38,9 @@ class UserServiceImplTest {
 
     @Mock
     private JwtUtil jwtUtil;
+
+    @Mock
+    private EmailService emailService;
 
     @InjectMocks
     private UserServiceImpl userService;
@@ -143,5 +150,59 @@ class UserServiceImplTest {
         verify(userRepository, times(1)).findByEmail("john.doe@example.com");
         verify(passwordEncoder, times(1)).matches("plainPassword123", "hashedPassword123");
         verifyNoInteractions(jwtUtil);
+    }
+
+    @Test
+    void forgotPassword_ShouldDoNothingAndNotSendEmail_WhenEmailDoesNotExist() {
+        ForgotPasswordDTO dto = new ForgotPasswordDTO("unknown@example.com");
+        when(userRepository.findByEmail("unknown@example.com")).thenReturn(Optional.empty());
+
+        assertDoesNotThrow(() -> userService.forgotPassword(dto));
+        verify(userRepository, times(1)).findByEmail("unknown@example.com");
+        verifyNoInteractions(jwtUtil);
+        verifyNoInteractions(emailService);
+    }
+
+    @Test
+    void forgotPassword_ShouldGenerateTokenAndSendEmail_WhenUserExists() {
+        ForgotPasswordDTO dto = new ForgotPasswordDTO("john.doe@example.com");
+        when(userRepository.findByEmail("john.doe@example.com")).thenReturn(Optional.of(user));
+        when(jwtUtil.generateResetToken(1L, "john.doe@example.com")).thenReturn("reset-jwt-token");
+
+        userService.forgotPassword(dto);
+
+        verify(userRepository, times(1)).findByEmail("john.doe@example.com");
+        verify(jwtUtil, times(1)).generateResetToken(1L, "john.doe@example.com");
+        verify(emailService, times(1)).sendPasswordResetEmail(
+                eq("john.doe@example.com"),
+                contains("reset-jwt-token"));
+    }
+
+    @Test
+    void resetPassword_ShouldThrowUserNotFoundException_WhenUserDoesNotExist() {
+        ResetPasswordDTO dto = new ResetPasswordDTO("newSecretPass");
+        when(jwtUtil.extractUserIdFromToken("valid-token")).thenReturn(999L);
+        when(userRepository.findById(999L)).thenReturn(Optional.empty());
+
+        assertThrows(UserNotFoundException.class, () -> userService.resetPassword("valid-token", dto));
+        verify(jwtUtil, times(1)).extractUserIdFromToken("valid-token");
+        verify(userRepository, times(1)).findById(999L);
+        verifyNoInteractions(passwordEncoder);
+    }
+
+    @Test
+    void resetPassword_ShouldUpdatePasswordAndSaveUser_WhenTokenAndUserValid() {
+        ResetPasswordDTO dto = new ResetPasswordDTO("newSecretPass");
+        when(jwtUtil.extractUserIdFromToken("valid-token")).thenReturn(1L);
+        when(userRepository.findById(1L)).thenReturn(Optional.of(user));
+        when(passwordEncoder.encode("newSecretPass")).thenReturn("encodedNewSecretPass");
+
+        userService.resetPassword("valid-token", dto);
+
+        verify(jwtUtil, times(1)).extractUserIdFromToken("valid-token");
+        verify(userRepository, times(1)).findById(1L);
+        verify(passwordEncoder, times(1)).encode("newSecretPass");
+        verify(userRepository, times(1)).save(user);
+        assertEquals("encodedNewSecretPass", user.getPassword());
     }
 }

@@ -1,3 +1,4 @@
+
 package com.fundoo.notes.config;
 
 import lombok.RequiredArgsConstructor;
@@ -27,15 +28,48 @@ public class SecurityConfig {
 
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
+
         http
                 .csrf(AbstractHttpConfigurer::disable)
-                .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+
+                .sessionManagement(session ->
+                        session.sessionCreationPolicy(
+                                SessionCreationPolicy.STATELESS
+                        )
+                )
+
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers(HttpMethod.POST, "/api/users", "/api/users/login").permitAll()
+
+                        // Public APIs
+                        .requestMatchers(
+                                HttpMethod.POST,
+                                "/api/users",
+                                "/api/users/login",
+                                "/api/users/forgotpassword"
+                        ).permitAll()
+
+                        // Thymeleaf reset password page
+                        .requestMatchers(
+                                HttpMethod.GET,
+                                "/reset-password"
+                        ).permitAll()
+
+                        // Reset password API
+                        .requestMatchers(
+                                HttpMethod.PATCH,
+                                "/api/users"
+                        ).permitAll()
+
+                        // Everything else requires authentication
                         .anyRequest().authenticated()
                 )
-                .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
+
+                .addFilterBefore(
+                        jwtAuthFilter,
+                        UsernamePasswordAuthenticationFilter.class
+                );
 
         return http.build();
     }
 }
+
