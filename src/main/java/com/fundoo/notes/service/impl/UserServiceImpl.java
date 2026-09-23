@@ -67,9 +67,9 @@ public class UserServiceImpl implements UserService {
     @Override
     public void forgotPassword(ForgotPasswordDTO forgotPasswordDTO) {
         userRepository.findByEmail(forgotPasswordDTO.getEmail()).ifPresent(user -> {
-            String resetToken = jwtUtil.generateResetToken(user.getUserId(), user.getEmail());
-            String resetLink = resetPasswordUrl + "?token=" + resetToken;
-            emailService.sendPasswordResetEmail(user.getEmail(), resetLink);
+			            String resetToken = jwtUtil.generateResetToken(user.getUserId(), user.getEmail());
+			            String resetLink = resetPasswordUrl + "?token=" + resetToken;
+			  emailService.sendPasswordResetEmail(user.getEmail(), resetLink);
         });
     }
 

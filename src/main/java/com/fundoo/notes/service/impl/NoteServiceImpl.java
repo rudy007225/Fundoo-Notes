@@ -12,6 +12,8 @@ import com.fundoo.notes.service.NoteService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
+import java.util.List;
+
 @Service
 @RequiredArgsConstructor
 public class NoteServiceImpl implements NoteService {
@@ -70,6 +72,14 @@ public class NoteServiceImpl implements NoteService {
 
         // 6. Map the saved Note -> NoteResponseDTO
         return mapNoteToNoteResponseDTO(savedNote);
+    }
+
+    @Override
+    public List<NoteResponseDTO> getAllNotes(Long userId) {
+        List<Note> notes = noteRepository.findByUserUserId(userId);
+        return notes.stream()
+                .map(this::mapNoteToNoteResponseDTO)
+                .toList();
     }
 
     private NoteResponseDTO mapNoteToNoteResponseDTO(Note note) {

@@ -9,10 +9,13 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+
+import java.util.List;
 
 @RestController
 @RequestMapping("/api/notes")
@@ -29,5 +32,14 @@ public class NoteController {
         NoteResponseDTO response = noteService.createNote(dto, userId);
         ApiResponse<NoteResponseDTO> apiResponse = ApiResponse.success("Note created successfully", response);
         return ResponseEntity.status(HttpStatus.CREATED).body(apiResponse);
+    }
+
+    @GetMapping
+    public ResponseEntity<ApiResponse<List<NoteResponseDTO>>> getAllNotes(
+            @AuthenticationPrincipal CustomUserDetails userDetails) {
+        Long userId = userDetails.getUserId();
+        List<NoteResponseDTO> notes = noteService.getAllNotes(userId);
+        String message = notes.isEmpty() ? "No notes found" : "Notes retrieved successfully";
+        return ResponseEntity.ok(ApiResponse.success(message, notes));
     }
 }
