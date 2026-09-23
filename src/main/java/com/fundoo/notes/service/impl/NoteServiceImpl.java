@@ -5,6 +5,7 @@ import com.fundoo.notes.dto.NoteResponseDTO;
 import com.fundoo.notes.entity.Note;
 import com.fundoo.notes.entity.User;
 import com.fundoo.notes.exception.EmptyNoteException;
+import com.fundoo.notes.exception.NoteNotFoundException;
 import com.fundoo.notes.exception.UserNotFoundException;
 import com.fundoo.notes.repository.NoteRepository;
 import com.fundoo.notes.repository.UserRepository;
@@ -80,6 +81,13 @@ public class NoteServiceImpl implements NoteService {
         return notes.stream()
                 .map(this::mapNoteToNoteResponseDTO)
                 .toList();
+    }
+
+    @Override
+    public NoteResponseDTO getNoteById(Long noteId, Long userId) {
+        Note note = noteRepository.findByNoteIdAndUserUserId(noteId, userId)
+                .orElseThrow(() -> new NoteNotFoundException("Note not found with id: " + noteId));
+        return mapNoteToNoteResponseDTO(note);
     }
 
     private NoteResponseDTO mapNoteToNoteResponseDTO(Note note) {

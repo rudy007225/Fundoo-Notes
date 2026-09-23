@@ -5,6 +5,7 @@ import com.fundoo.notes.config.JwtAuthFilter;
 import com.fundoo.notes.dto.NoteRequestDTO;
 import com.fundoo.notes.dto.NoteResponseDTO;
 import com.fundoo.notes.entity.User;
+import com.fundoo.notes.exception.NoteNotFoundException;
 import com.fundoo.notes.security.CustomUserDetails;
 import com.fundoo.notes.service.NoteService;
 import org.junit.jupiter.api.AfterEach;
@@ -114,5 +115,29 @@ class NoteControllerTest {
                 .andExpect(jsonPath("$.success").value(true))
                 .andExpect(jsonPath("$.message").value("Note created successfully"))
                 .andExpect(jsonPath("$.data.noteId").value(1L));
+    }
+
+    @Test
+    void getNoteById_WhenNoteExists_ShouldReturn200AndNote() throws Exception {
+        NoteResponseDTO responseDTO = new NoteResponseDTO(101L, "Sample Note", "Sample Content", "white", false, false, LocalDateTime.now(), LocalDateTime.now());
+        when(noteService.getNoteById(101L, 1L)).thenReturn(responseDTO);
+
+        mockMvc.perform(get("/api/notes/101"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.message").value("Note retrieved successfully"))
+                .andExpect(jsonPath("$.data.noteId").value(101L))
+                .andExpect(jsonPath("$.data.title").value("Sample Note"));
+    }
+
+    @Test
+    void getNoteById_WhenNoteNotFound_ShouldReturn404() throws Exception {
+        when(noteService.getNoteById(999L, 1L))
+                .thenThrow(new NoteNotFoundException("Note not found with id: 999"));
+
+        mockMvc.perform(get("/api/notes/999"))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.success").value(false))
+                .andExpect(jsonPath("$.message").value("Note not found with id: 999"));
     }
 }

@@ -72,6 +72,13 @@ public class GlobalExceptionHandler {
                 .body(ApiResponse.error(ex.getMessage()));
     }
 
+    @ExceptionHandler(NoteNotFoundException.class)
+    public ResponseEntity<ApiResponse<Void>> handleNoteNotFoundException(NoteNotFoundException ex) {
+        return ResponseEntity
+                .status(HttpStatus.NOT_FOUND)
+                .body(ApiResponse.error(ex.getMessage()));
+    }
+
     @ExceptionHandler({io.jsonwebtoken.JwtException.class, IllegalArgumentException.class})
     public ResponseEntity<ApiResponse<Void>> handleJwtException(RuntimeException ex) {
         return ResponseEntity

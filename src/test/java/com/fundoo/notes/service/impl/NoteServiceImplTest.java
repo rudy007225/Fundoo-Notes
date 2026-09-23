@@ -5,6 +5,7 @@ import com.fundoo.notes.dto.NoteResponseDTO;
 import com.fundoo.notes.entity.Note;
 import com.fundoo.notes.entity.User;
 import com.fundoo.notes.exception.EmptyNoteException;
+import com.fundoo.notes.exception.NoteNotFoundException;
 import com.fundoo.notes.exception.UserNotFoundException;
 import com.fundoo.notes.repository.NoteRepository;
 import com.fundoo.notes.repository.UserRepository;
@@ -137,5 +138,26 @@ class NoteServiceImplTest {
 
         assertThrows(UserNotFoundException.class, () -> noteService.createNote(request, 1L));
         verify(noteRepository, never()).save(any());
+    }
+
+    @Test
+    void getNoteById_WhenNoteExists_ShouldReturnNoteResponseDTO() {
+        when(noteRepository.findByNoteIdAndUserUserId(101L, 1L)).thenReturn(Optional.of(note1));
+
+        NoteResponseDTO response = noteService.getNoteById(101L, 1L);
+
+        assertNotNull(response);
+        assertEquals(101L, response.getNoteId());
+        assertEquals("Note 1", response.getTitle());
+        assertEquals("Content 1", response.getContent());
+        verify(noteRepository, times(1)).findByNoteIdAndUserUserId(101L, 1L);
+    }
+
+    @Test
+    void getNoteById_WhenNoteDoesNotExist_ShouldThrowNoteNotFoundException() {
+        when(noteRepository.findByNoteIdAndUserUserId(999L, 1L)).thenReturn(Optional.empty());
+
+        assertThrows(NoteNotFoundException.class, () -> noteService.getNoteById(999L, 1L));
+        verify(noteRepository, times(1)).findByNoteIdAndUserUserId(999L, 1L);
     }
 }
