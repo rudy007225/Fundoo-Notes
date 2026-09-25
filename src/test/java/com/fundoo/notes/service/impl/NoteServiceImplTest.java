@@ -2,6 +2,7 @@ package com.fundoo.notes.service.impl;
 
 import com.fundoo.notes.dto.NoteRequestDTO;
 import com.fundoo.notes.dto.NoteResponseDTO;
+import com.fundoo.notes.dto.NoteUpdateDTO;
 import com.fundoo.notes.entity.Note;
 import com.fundoo.notes.entity.User;
 import com.fundoo.notes.exception.EmptyNoteException;
@@ -159,5 +160,88 @@ class NoteServiceImplTest {
 
         assertThrows(NoteNotFoundException.class, () -> noteService.getNoteById(999L, 1L));
         verify(noteRepository, times(1)).findByNoteIdAndUserUserId(999L, 1L);
+    }
+
+    @Test
+    void editNote_WhenValidPartialUpdate_ShouldUpdateFieldsAndReturnResponseDTO() {
+        NoteUpdateDTO updateDTO = new NoteUpdateDTO();
+        updateDTO.setNoteId(101L);
+        updateDTO.setTitle("Updated Title");
+        updateDTO.setColour("yellow");
+        // content is null (untouched)
+
+        when(noteRepository.findByNoteIdAndUserUserId(101L, 1L)).thenReturn(Optional.of(note1));
+        when(noteRepository.save(any(Note.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        NoteResponseDTO response = noteService.editNote(updateDTO, 1L);
+
+        assertNotNull(response);
+        assertEquals(101L, response.getNoteId());
+        assertEquals("Updated Title", response.getTitle());
+        assertEquals("Content 1", response.getContent());
+        assertEquals("yellow", response.getColour());
+        verify(noteRepository, times(1)).findByNoteIdAndUserUserId(101L, 1L);
+        verify(noteRepository, times(1)).save(note1);
+    }
+
+    @Test
+    void editNote_WhenNoteNotFound_ShouldThrowNoteNotFoundException() {
+        NoteUpdateDTO updateDTO = new NoteUpdateDTO();
+        updateDTO.setNoteId(999L);
+        updateDTO.setTitle("Updated Title");
+
+        when(noteRepository.findByNoteIdAndUserUserId(999L, 1L)).thenReturn(Optional.empty());
+
+        assertThrows(NoteNotFoundException.class, () -> noteService.editNote(updateDTO, 1L));
+        verify(noteRepository, times(1)).findByNoteIdAndUserUserId(999L, 1L);
+        verify(noteRepository, never()).save(any());
+    }
+
+    @Test
+    void editNote_WhenBothTitleAndContentBecomeBlank_ShouldThrowEmptyNoteException() {
+        NoteUpdateDTO updateDTO = new NoteUpdateDTO();
+        updateDTO.setNoteId(101L);
+        updateDTO.setTitle("   ");
+        updateDTO.setContent("");
+
+        when(noteRepository.findByNoteIdAndUserUserId(101L, 1L)).thenReturn(Optional.of(note1));
+
+        assertThrows(EmptyNoteException.class, () -> noteService.editNote(updateDTO, 1L));
+        verify(noteRepository, times(1)).findByNoteIdAndUserUserId(101L, 1L);
+        verify(noteRepository, never()).save(any());
+    }
+
+    @Test
+    void editNote_WhenEmptyStringPassed_ShouldClearField_AndWhenNullPassed_ShouldLeaveFieldUntouched() {
+        // Case 1: title is empty string (""), content is null -> title cleared, content untouched
+        NoteUpdateDTO updateDTO1 = new NoteUpdateDTO();
+        updateDTO1.setNoteId(101L);
+        updateDTO1.setTitle("");
+        updateDTO1.setContent(null);
+
+        when(noteRepository.findByNoteIdAndUserUserId(101L, 1L)).thenReturn(Optional.of(note1));
+        when(noteRepository.save(any(Note.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        NoteResponseDTO response1 = noteService.editNote(updateDTO1, 1L);
+
+        assertNotNull(response1);
+        assertEquals("", response1.getTitle());
+        assertEquals("Content 1", response1.getContent());
+        verify(noteRepository, times(1)).save(note1);
+
+        // Case 2: title is null, content is empty string ("") -> title untouched, content cleared
+        NoteUpdateDTO updateDTO2 = new NoteUpdateDTO();
+        updateDTO2.setNoteId(102L);
+        updateDTO2.setTitle(null);
+        updateDTO2.setContent("");
+
+        when(noteRepository.findByNoteIdAndUserUserId(102L, 1L)).thenReturn(Optional.of(note2));
+
+        NoteResponseDTO response2 = noteService.editNote(updateDTO2, 1L);
+
+        assertNotNull(response2);
+        assertEquals("Note 2", response2.getTitle());
+        assertEquals("", response2.getContent());
+        verify(noteRepository, times(1)).save(note2);
     }
 }

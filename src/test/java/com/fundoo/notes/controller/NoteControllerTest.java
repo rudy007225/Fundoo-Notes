@@ -4,7 +4,9 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fundoo.notes.config.JwtAuthFilter;
 import com.fundoo.notes.dto.NoteRequestDTO;
 import com.fundoo.notes.dto.NoteResponseDTO;
+import com.fundoo.notes.dto.NoteUpdateDTO;
 import com.fundoo.notes.entity.User;
+import com.fundoo.notes.exception.EmptyNoteException;
 import com.fundoo.notes.exception.NoteNotFoundException;
 import com.fundoo.notes.security.CustomUserDetails;
 import com.fundoo.notes.service.NoteService;
@@ -28,6 +30,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -139,5 +142,83 @@ class NoteControllerTest {
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.success").value(false))
                 .andExpect(jsonPath("$.message").value("Note not found with id: 999"));
+    }
+
+    @Test
+    void editNote_WhenValidPartialUpdate_ShouldReturn200AndUpdatedNote() throws Exception {
+        NoteUpdateDTO updateDTO = new NoteUpdateDTO();
+        updateDTO.setNoteId(101L);
+        updateDTO.setTitle("Updated Title");
+        updateDTO.setColour("yellow");
+
+        NoteResponseDTO responseDTO = new NoteResponseDTO(101L, "Updated Title", "Content 1", "yellow", false, false, LocalDateTime.now(), LocalDateTime.now());
+        when(noteService.editNote(any(NoteUpdateDTO.class), eq(1L))).thenReturn(responseDTO);
+
+        mockMvc.perform(patch("/api/notes")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(updateDTO)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.message").value("Note successfully updated"))
+                .andExpect(jsonPath("$.data.noteId").value(101L))
+                .andExpect(jsonPath("$.data.title").value("Updated Title"))
+                .andExpect(jsonPath("$.data.content").value("Content 1"))
+                .andExpect(jsonPath("$.data.colour").value("yellow"));
+    }
+
+    @Test
+    void editNote_WhenNoteNotFound_ShouldReturn404() throws Exception {
+        NoteUpdateDTO updateDTO = new NoteUpdateDTO();
+        updateDTO.setNoteId(999L);
+        updateDTO.setTitle("Updated Title");
+
+        when(noteService.editNote(any(NoteUpdateDTO.class), eq(1L)))
+                .thenThrow(new NoteNotFoundException("No record found"));
+
+        mockMvc.perform(patch("/api/notes")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(updateDTO)))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.success").value(false))
+                .andExpect(jsonPath("$.message").value("No record found"));
+    }
+
+    @Test
+    void editNote_WhenBothFieldsBlank_ShouldReturn400() throws Exception {
+        NoteUpdateDTO updateDTO = new NoteUpdateDTO();
+        updateDTO.setNoteId(101L);
+        updateDTO.setTitle("   ");
+        updateDTO.setContent("");
+
+        when(noteService.editNote(any(NoteUpdateDTO.class), eq(1L)))
+                .thenThrow(new EmptyNoteException("title & content can't be blank"));
+
+        mockMvc.perform(patch("/api/notes")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(updateDTO)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.success").value(false))
+                .andExpect(jsonPath("$.message").value("title & content can't be blank"));
+    }
+
+    @Test
+    void editNote_WhenEmptyStringClearsFieldAndNullLeavesUntouched_ShouldReturn200AndReflectState() throws Exception {
+        NoteUpdateDTO updateDTO = new NoteUpdateDTO();
+        updateDTO.setNoteId(101L);
+        updateDTO.setTitle("");
+        updateDTO.setContent(null);
+
+        NoteResponseDTO responseDTO = new NoteResponseDTO(101L, "", "Untouched Content", "white", false, false, LocalDateTime.now(), LocalDateTime.now());
+        when(noteService.editNote(any(NoteUpdateDTO.class), eq(1L))).thenReturn(responseDTO);
+
+        mockMvc.perform(patch("/api/notes")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(updateDTO)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.message").value("Note successfully updated"))
+                .andExpect(jsonPath("$.data.noteId").value(101L))
+                .andExpect(jsonPath("$.data.title").value(""))
+                .andExpect(jsonPath("$.data.content").value("Untouched Content"));
     }
 }

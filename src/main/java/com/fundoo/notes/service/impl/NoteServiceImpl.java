@@ -2,6 +2,7 @@ package com.fundoo.notes.service.impl;
 
 import com.fundoo.notes.dto.NoteRequestDTO;
 import com.fundoo.notes.dto.NoteResponseDTO;
+import com.fundoo.notes.dto.NoteUpdateDTO;
 import com.fundoo.notes.entity.Note;
 import com.fundoo.notes.entity.User;
 import com.fundoo.notes.exception.EmptyNoteException;
@@ -14,6 +15,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
+import java.util.Optional;
 
 @Service
 @RequiredArgsConstructor
@@ -21,7 +23,7 @@ public class NoteServiceImpl implements NoteService {
 
     private static final String DEFAULT_COLOUR = "white";
     private static final int TITLE_MAX_LENGTH = 50;
-
+    
     private final NoteRepository noteRepository;
     private final UserRepository userRepository;
 
@@ -32,7 +34,7 @@ public class NoteServiceImpl implements NoteService {
 
         // 1. Check if both title and content are blank -> throw EmptyNoteException
         if (isTitleBlank && isContentBlank) {
-            throw new EmptyNoteException("Note title and content cannot both be empty");
+            throw new EmptyNoteException("title and content can't be empty");
         }
 
         // 2. If title is blank but content isn't -> derive the title from content's first line
@@ -102,4 +104,27 @@ public class NoteServiceImpl implements NoteService {
                 note.getUpdatedAt()
         );
     }
+
+	@Override
+	public NoteResponseDTO editNote(NoteUpdateDTO noteUpdateDTO, Long userId) {
+		Note original = noteRepository.findByNoteIdAndUserUserId(noteUpdateDTO.getNoteId(), userId)
+				.orElseThrow(()-> new NoteNotFoundException("No record found"));
+		
+		if(noteUpdateDTO.getTitle() != null) {
+			original.setTitle(noteUpdateDTO.getTitle());
+		}
+		if(noteUpdateDTO.getContent() != null ) {
+			original.setContent(noteUpdateDTO.getContent());
+		}
+		if(noteUpdateDTO.getColour() != null ) {
+			original.setColour(noteUpdateDTO.getColour());
+		}
+		
+		if(original.getTitle().isBlank() && original.getContent().isBlank()) {
+			throw new EmptyNoteException("title and content can't be empty");
+		}
+		
+		Note resp = noteRepository.save(original);
+			return mapNoteToNoteResponseDTO(resp);
+	}
 }
